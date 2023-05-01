@@ -1,4 +1,5 @@
 ﻿using API.FurnitureStore.Shared;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace API.FurnitureStore.Data
 {
-    public class APIFurnitureStoreContext : DbContext
+    public class APIFurnitureStoreContext : IdentityDbContext
     {
         public APIFurnitureStoreContext(DbContextOptions options) : base (options)
         {
@@ -20,9 +21,17 @@ namespace API.FurnitureStore.Data
         public DbSet <Order> Orders { get; set; }
         public DbSet <ProductCategory> ProductCategories { get; set; }
 
+        public DbSet <OrderDetail> OrderDetails { get; set; }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseSqlite();
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<OrderDetail>().HasKey(orderDetail => new { orderDetail.OrderId, orderDetail.ProductId });
         }
     }
 }
