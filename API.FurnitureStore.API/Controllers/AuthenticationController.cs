@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using System.Text.Encodings.Web;
 using API.FurnitureStore.Data;
 using API.FurnitureStore.Shared;
+using API.FurnitureStore.Shared.Common;
 
 namespace API.FurnitureStore.API.Controllers
 {
@@ -152,7 +153,7 @@ namespace API.FurnitureStore.API.Controllers
             });
         }
 
-        private async string GenerateToken(IdentityUser user)
+        private async Task<AuthResult> GenerateToken(IdentityUser user)
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_jwtConfig.Secret);
@@ -177,7 +178,7 @@ namespace API.FurnitureStore.API.Controllers
             var refreshToken = new RefreshToken
             {
                 JwtId = token.Id,
-                Token = ,
+                Token = RandomGenerator.GenerateRandomString(23),
                 AddedDate = DateTime.UtcNow,
                 ExpiryDate = DateTime.UtcNow.AddMonths(6),
                 IsRevoked = false,
