@@ -12,6 +12,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text.Encodings.Web;
+using API.FurnitureStore.Data;
+using API.FurnitureStore.Shared;
 
 namespace API.FurnitureStore.API.Controllers
 {
@@ -22,13 +24,16 @@ namespace API.FurnitureStore.API.Controllers
         private readonly UserManager<IdentityUser> _userManager;
         private readonly JwtConfig _jwtConfig;
         private readonly IEmailSender _emailSender;
+        private readonly APIFurnitureStoreContext _context;
         public AuthenticationController(UserManager<IdentityUser>userManager, 
                                         IOptions<JwtConfig>jwtConfig,
-                                        IEmailSender emailSender)
+                                        IEmailSender emailSender,
+                                        APIFurnitureStoreContext context)
         {
             _userManager = userManager;
             _jwtConfig = jwtConfig.Value;
             _emailSender = emailSender;
+            _context = context;
         }
 
         [HttpPost("Login")]
@@ -65,7 +70,7 @@ namespace API.FurnitureStore.API.Controllers
                 });
 
             var token = GenerateToken(existingUser);
-            return Ok(new AuthResult { Token = token, Result = true });
+            return Ok(token);
 
         }
 
@@ -147,7 +152,7 @@ namespace API.FurnitureStore.API.Controllers
             });
         }
 
-        private string GenerateToken(IdentityUser user)
+        private async string GenerateToken(IdentityUser user)
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_jwtConfig.Secret);
@@ -166,7 +171,29 @@ namespace API.FurnitureStore.API.Controllers
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256),
              };
             var token = jwtTokenHandler.CreateToken(tokenDescriptor);
-            return jwtTokenHandler.WriteToken(token);
+            
+            var jwtToken =  jwtTokenHandler.WriteToken(token);
+
+            var refreshToken = new RefreshToken
+            {
+                JwtId = token.Id,
+                Token = ,
+                AddedDate = DateTime.UtcNow,
+                ExpiryDate = DateTime.UtcNow.AddMonths(6),
+                IsRevoked = false,
+                IsUsed = false,
+                UserId = user.Id,
+            };
+
+            await _context.RefreshTokens.AddAsync(refreshToken);
+            await _context.SaveChangesAsync();
+
+            return new AuthResult
+            {
+                Token = jwtToken,
+                RefreshToken = refreshToken.Token,
+                Result = true,
+            };
 
         }
 
