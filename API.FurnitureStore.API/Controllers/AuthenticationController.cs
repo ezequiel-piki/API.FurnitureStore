@@ -202,8 +202,8 @@ namespace API.FurnitureStore.API.Controllers
 
                 var expiryDate = DateTimeOffset.FromUnixTimeSeconds( utcExpireDate ).UtcDateTime;
                
-                if (expiryDate > DateTime.UtcNow)
-                    throw new Exception("Expired Token");
+                if (expiryDate < DateTime.UtcNow)
+                    throw new Exception("Token Expired");
 
                 var storedToken = await _context.RefreshTokens.FirstOrDefaultAsync(t => t.Token == tokenRequest.RefreshToken);
 
@@ -225,7 +225,7 @@ namespace API.FurnitureStore.API.Controllers
                 _context.RefreshTokens.Update( storedToken );
                 await _context.SaveChangesAsync();
 
-                var dbUser = await _userManager.FindByIdAsync( storedToken.JwtId );
+                var dbUser = await _userManager.FindByIdAsync(storedToken.UserId);
 
                 return await GenerateTokenAsync(dbUser);
             }
@@ -244,11 +244,12 @@ namespace API.FurnitureStore.API.Controllers
         private async Task<AuthResult> GenerateTokenAsync(IdentityUser user)
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
+           
             var key = Encoding.UTF8.GetBytes(_jwtConfig.Secret);
+            
             var tokenDescriptor = new SecurityTokenDescriptor() 
             {
-               Subject = new ClaimsIdentity(new ClaimsIdentity
-               (new[]
+               Subject = new ClaimsIdentity(new ClaimsIdentity (new[]
                {
                    new Claim("Id",user.Id),
                    new Claim(JwtRegisteredClaimNames.Sub, user.Email),
@@ -256,9 +257,13 @@ namespace API.FurnitureStore.API.Controllers
                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                    new Claim(JwtRegisteredClaimNames.Iat, DateTime.Now.ToUniversalTime().ToString())
                })),
+
                 Expires = DateTime.UtcNow.Add(_jwtConfig.ExpiryTime),
+               
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256),
              };
+
+
             var token = jwtTokenHandler.CreateToken(tokenDescriptor);
             
             var jwtToken =  jwtTokenHandler.WriteToken(token);
